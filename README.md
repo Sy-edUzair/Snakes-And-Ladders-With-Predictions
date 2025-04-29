@@ -33,7 +33,7 @@ pip install pygame
 
 Run the game with the following command:
 ```
-python snl_gui.py
+python main.py
 ```
 
 ## Game Rules
