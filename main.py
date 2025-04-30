@@ -1,6 +1,6 @@
 import pygame
 import sys
-from snl import SnakesAndLadders, Player, AIPlayer
+from snl import SnakesAndLadders,AIPlayer
 from snl_gui import SnakesAndLaddersGUI, HumanGUIPlayer, ColorSelector, SCREEN_WIDTH, SCREEN_HEIGHT
 
 def main():

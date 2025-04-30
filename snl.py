@@ -12,14 +12,13 @@ class Player:
         self.tokens = 0
         self.skipped = False
         self.prediction = None
-        self.on_board = True  # Changed to True by default so players start on the board
+        self.on_board = True  
     
     def reset(self):
         self.position = 0
         self.skipped = False
         self.prediction = None
-        self.on_board = True  # Changed to True to ensure consistent reset behavior
-        # Keep tokens and other player properties
+        self.on_board = True  
     
     def __str__(self):
         return f"{self.name} at position {self.position} with {self.tokens} tokens"
@@ -27,48 +26,32 @@ class Player:
     def make_prediction(self, game_state=None):
         """Make a prediction for the dice roll (1-6)."""
         if self.is_ai:
-            # Simple AI prediction logic
             return random.randint(1, 6)
-        return None  # Human players will set this through UI
+        return None 
     
     def choose_reward(self, game_state) -> int:
         """Choose a reward when prediction is correct.
         1: Bonus roll, 2: Gain tokens
         To be overridden by AI Player."""
-        return random.choice([1, 2])  # Default is random choice
+        return random.choice([1, 2])  
     
     def should_use_tokens_for_snake(self, snake_length, token_cost):
         """Decide whether to use tokens to avoid a snake."""
         if self.is_ai:
-            # Enhanced AI decision logic for token usage
-            
-            # If we don't have enough tokens, decision is made for us
             if self.tokens < token_cost:
                 return False
-                
-            # Calculate how valuable this snake avoidance is
-            # For very long snakes, almost always use tokens
             if snake_length > 25 and self.tokens >= token_cost:
                 return True
-                
-            # For medium snakes, use tokens if we have plenty
             if snake_length > 15 and self.tokens >= token_cost * 2:
                 return True
-                
-            # For short snakes, only use tokens if we have an excess
             if snake_length <= 15 and self.tokens >= token_cost * 3:
                 return True
-                
-            # If we're close to position 100, more likely to use tokens
             if self.position > 80 and self.tokens >= token_cost:
                 return True
-                
-            # Default: be conservative with tokens
             return False
         
-        return None  # Human players will decide through UI
+        return None 
     
-    # For compatibility with game methods that expect this method
     def decide_use_tokens(self, game_state, tokens_required: int) -> bool:
         """Alias for should_use_tokens_for_snake for consistency."""
         return self.should_use_tokens_for_snake(
@@ -78,7 +61,6 @@ class AIPlayer(Player):
     def __init__(self, name: str, difficulty: str = "medium", color: str = "Red"):
         super().__init__(name, color, is_ai=True)
         self.difficulty = difficulty
-        # Depth limits for different difficulty levels
         self.depth_limits = {
             "easy": 1,
             "medium": 2,
@@ -89,20 +71,14 @@ class AIPlayer(Player):
     def make_prediction(self, game_state) -> int:
         """Make a strategic prediction based on minimax algorithm."""
         if self.difficulty == "easy":
-            # Easy difficulty just makes random predictions
             return random.randint(1, 6)
-        
-        # For other difficulties, use minimax to evaluate different predictions
+
+        #Logic for other difficulties
         best_score = float('-inf')
         best_prediction = 1
         
-        # Try each possible prediction
         for prediction in range(1, 7):
-            # Evaluate the prediction with minimax
-            score = self._minimax_prediction(game_state, prediction, 
-                                           self.depth_limits[self.difficulty], 
-                                           float('-inf'), float('inf'), 
-                                           is_maximizing=True)
+            score = self._minimax_prediction(game_state, prediction, self.depth_limits[self.difficulty],float('-inf'), float('inf'),is_maximizing=True)
             
             if score > best_score:
                 best_score = score
@@ -110,39 +86,31 @@ class AIPlayer(Player):
         
         return best_prediction
     
-    def _minimax_prediction(self, game_state, prediction: int, depth: int, 
-                          alpha: float, beta: float, is_maximizing: bool) -> float:
+    def _minimax_prediction(self, game_state, prediction: int, depth: int,alpha: float, beta: float, is_maximizing: bool) -> float:
         """Minimax algorithm for evaluating a prediction."""
         # Base case: reached max depth or terminal state
         if depth == 0 or self._is_terminal_state(game_state):
             return self._evaluate_state(game_state)
         
         # Calculate probabilities for each dice outcome
-        dice_probs = [1/6] * 6  # Equal probability for each face of the dice
-        
+        dice_probs = [1/6] * 6 
         if is_maximizing:
             value = float('-inf')
             for dice_roll in range(1, 7):
-                # Create simulated state after dice roll with current prediction
                 next_state = self._simulate_move(game_state, prediction, dice_roll)
-                # Recursive call with probability weighting
-                value = max(value, dice_probs[dice_roll-1] * self._minimax_prediction(
-                    next_state, prediction, depth - 1, alpha, beta, False))
+                value = max(value, dice_probs[dice_roll-1] * self._minimax_prediction(next_state, prediction, depth - 1, alpha, beta, False))
                 alpha = max(alpha, value)
                 if beta <= alpha:
-                    break  # Alpha-beta pruning
+                    break 
             return value
         else:
             value = float('inf')
             for dice_roll in range(1, 7):
-                # Create simulated state after dice roll with current prediction
                 next_state = self._simulate_move(game_state, prediction, dice_roll)
-                # Recursive call with probability weighting
-                value = min(value, dice_probs[dice_roll-1] * self._minimax_prediction(
-                    next_state, prediction, depth - 1, alpha, beta, True))
+                value = min(value, dice_probs[dice_roll-1] * self._minimax_prediction(next_state, prediction, depth - 1, alpha, beta, True))
                 beta = min(beta, value)
                 if beta <= alpha:
-                    break  # Alpha-beta pruning
+                    break
             return value
     
     def _is_terminal_state(self, game_state) -> bool:
@@ -154,7 +122,6 @@ class AIPlayer(Player):
     
     def _evaluate_state(self, game_state) -> float:
         """Evaluate the game state from this AI's perspective."""
-        # Find this AI player in the game state
         ai_player = None
         for player in game_state.players:
             if player.name == self.name:
@@ -164,43 +131,28 @@ class AIPlayer(Player):
         if not ai_player:
             return 0.0
         
-        # Basic evaluation: position difference and token advantage
         position_score = ai_player.position / game_state.board_size * 100
         
-        # Token advantage compared to other players
         token_advantage = 0
         for player in game_state.players:
             if player.name != self.name:
                 token_advantage += ai_player.tokens - player.tokens
         
-        # Distance to win
         distance_to_win = game_state.board_size - ai_player.position
-        
-        # Calculate score based on multiple factors
         score = position_score + token_advantage * 5 - distance_to_win * 2
-        
-        # Check if we're in a winning position
         if ai_player.position >= game_state.board_size:
-            score = 1000  # Very high score for winning position
+            score = 1000 
         
         return score
     
     def _simulate_move(self, game_state, prediction: int, dice_roll: int):
         """Simulate a move with the given prediction and dice roll."""
-        # Create a deep copy of the game state to avoid modifying the original
         simulated_state = copy.deepcopy(game_state)
-        
-        # Find current player
         current_player_idx = simulated_state.current_player_idx
         current_player = simulated_state.players[current_player_idx]
-        
-        # Record prediction
         simulated_state.predictions[current_player.name] = prediction
-        
-        # Check prediction correctness
         is_correct = (prediction == dice_roll)
         
-        # Simulate movement and consequences
         if is_correct:
             # Assume we always choose bonus roll for simulation
             current_player.tokens += 1  # Simplified reward
@@ -208,52 +160,44 @@ class AIPlayer(Player):
         # Move player
         current_player.position += dice_roll
         
-        # Handle snakes and ladders (simplified)
+        # Handle snakes and ladders
         if current_player.position in simulated_state.snakes:
             # Check if we have tokens to neutralize
             snake_head = current_player.position
             tokens_required = simulated_state.snake_sizes[snake_head]
             
             if current_player.tokens >= tokens_required:
-                # Assume we use tokens if available in simulation
                 current_player.tokens -= tokens_required
             else:
-                # We go down the snake
                 current_player.position = simulated_state.snakes[snake_head]
         
-        # Handle ladders
         if current_player.position in simulated_state.ladders:
             current_player.position = simulated_state.ladders[current_player.position]
         
-        # Ensure player doesn't go beyond the board
         current_player.position = min(current_player.position, simulated_state.board_size)
-        
         # Move to next player
         simulated_state.current_player_idx = (current_player_idx + 1) % len(simulated_state.players)
-        
         return simulated_state
     
     def choose_reward(self, game_state) -> int:
         """Choose the best reward based on the current game state."""
         if self.difficulty == "easy":
             return random.choice([1, 2])
-        
         # For higher difficulties, make a strategic choice
         # Calculate remaining distance to the goal
         remaining_distance = game_state.board_size - self.position
         
         # If we're close to the goal, prefer bonus roll
-        if remaining_distance <= 12:  # Within 2 max dice rolls
-            return 1  # Bonus roll
+        if remaining_distance <= 12: #2 dice rolls
+            return 1 
         
         # If we have very few tokens, gain more
         if self.tokens <= 1:
-            return 2  # Gain tokens
+            return 2 
         
-        # Check if there are dangerous snakes ahead
         dangerous_snakes_ahead = 0
         for snake_head in game_state.snakes:
-            if self.position < snake_head <= self.position + 12:  # Within 2 dice rolls
+            if self.position < snake_head <= self.position + 12: 
                 dangerous_snakes_ahead += 1
         
         # If many dangerous snakes ahead, gather tokens
@@ -269,7 +213,6 @@ class AIPlayer(Player):
     def decide_use_tokens(self, game_state, tokens_required: int) -> bool:
         """Decide whether to use tokens to neutralize a snake."""
         if self.difficulty == "easy":
-            # Easy difficulty uses tokens randomly
             return random.choice([True, False]) if self.tokens >= tokens_required else False
         
         # For higher difficulties, make a strategic decision
@@ -277,26 +220,18 @@ class AIPlayer(Player):
         if self.tokens >= tokens_required + 2:
             return True
         
-        # Check how bad the snake is
         snake_head = self.position
         snake_tail = game_state.snakes[snake_head]
         snake_length = snake_head - snake_tail
         
-        # For very long snakes, use tokens even if we'll be left with none
         if snake_length > 25 and self.tokens >= tokens_required:
             return True
-        
-        # If we're close to winning, use tokens to avoid going back
         remaining_distance = game_state.board_size - self.position
         if remaining_distance < 15 and self.tokens >= tokens_required:
             return True
-        
-        # If we're in a good position, protect it
         player_positions = [p.position for p in game_state.players if p.name != self.name]
         if all(self.position > pos for pos in player_positions) and self.tokens >= tokens_required:
             return True
-        
-        # Default: only use tokens if the snake is significant and we have enough
         return snake_length > 15 and self.tokens >= tokens_required
 
 class SnakesAndLadders:
@@ -305,17 +240,17 @@ class SnakesAndLadders:
         self.board_size = board_size
         self.players: List[Union[Player, AIPlayer]] = []
         self.current_player_idx = 0
-        self.snakes: Dict[int, int] = {}  # key: head, value: tail
-        self.snake_sizes: Dict[int, int] = {}  # key: head, value: size (tokens needed)
-        self.ladders: Dict[int, int] = {}  # key: bottom, value: top
-        self.predictions: Dict[str, int] = {}  # key: player name, value: predicted dice roll
-        self.dice = Dice()  # Integrated dice
-        self.game_log = []  # Integrated game log
-        self.game_state = "setup"  # setup, playing, game_over
+        self.snakes: Dict[int, int] = {}  
+        self.snake_sizes: Dict[int, int] = {}  
+        self.ladders: Dict[int, int] = {} 
+        self.predictions: Dict[str, int] = {}  
+        self.dice = Dice()  
+        self.game_log = []  
+        self.game_state = "setup"  
         self.winner = None
-        self.is_human_turn = False  # Add attribute to track if it's a human player's turn
+        self.is_human_turn = False 
         
-        # Set up the board with snakes and ladders
+
         if num_snakes == 0 and num_ladders == 0:
             self._setup_predefined_board()
         else:
@@ -387,13 +322,10 @@ class SnakesAndLadders:
         for i in range(num_snakes):
             if i < len(potential_snake_heads):
                 head = potential_snake_heads[i]
-                # Snake should move downward by at least 10 squares
                 min_tail = max(1, head - 30)
                 max_tail = max(min_tail, head - 10)
                 tail = random.randint(min_tail, max_tail)
                 self.snakes[head] = tail
-                
-                # Assign snake size based on length (1-3 tokens needed)
                 snake_length = head - tail
                 self.calculate_snake_size(head, snake_length)
     
@@ -483,8 +415,6 @@ class SnakesAndLadders:
             
             self.log(f"{player.name} landed on a snake (position {snake_head})!")
             self.log(f"This snake requires {tokens_required} tokens to neutralize. You have {player.tokens} tokens.")
-            
-            # Let player decide whether to use tokens
             use_tokens = False
             
             if player.tokens >= tokens_required:
@@ -495,7 +425,6 @@ class SnakesAndLadders:
                     self.log(f"{player.name} used {tokens_required} tokens to neutralize the snake!")
                     return True
             
-            # If we didn't use tokens or don't have enough
             player.position = snake_tail
             self.log(f"{player.name} slid down to position {snake_tail}!")
             
@@ -505,24 +434,17 @@ class SnakesAndLadders:
     
     def move_player(self, player: Player, spaces: int):
         """Move a player the specified number of spaces."""
-        # For players on the board
         new_position = player.position + spaces
-        
-        # Exact dice to reach 100 rule
         if new_position > self.board_size:
             self.log(f"{player.name} needs exact dice to reach {self.board_size}. Stayed at {player.position}.")
             return
         
         player.position = new_position
         self.log(f"{player.name} moved to position {player.position}")
-        
-        # Check if player landed on a ladder
         if player.position in self.ladders:
             old_pos = player.position
             player.position = self.ladders[player.position]
             self.log(f"{player.name} climbed a ladder from {old_pos} to {player.position}!")
-        
-        # Ensure player doesn't go beyond the board
         player.position = min(player.position, self.board_size)
     
     def check_win(self, player: Player) -> bool:
@@ -533,21 +455,16 @@ class SnakesAndLadders:
         """Move to the next player, skipping any players marked to be skipped."""
         self.current_player_idx = (self.current_player_idx + 1) % len(self.players)
         current_player = self.players[self.current_player_idx]
-        
-        # Skip player's turn if applicable
         if current_player.skipped:
             self.log(f"{current_player.name}'s turn is skipped!")
             current_player.skipped = False
             self.next_player()
-        
-        # Check if the current player is human
         self.is_human_turn = not current_player.is_ai
     
     def log(self, message: str):
         """Add a message to the game log."""
         self.game_log.append(message)
-        print(message)  # For console debugging
-    
+        print(message)  
     def reset_game(self):
         """Reset the game state."""
         for player in self.players:
@@ -570,48 +487,41 @@ class SnakesAndLadders:
             self.current_player_idx = (self.current_player_idx + 1) % len(self.players)
             return False
         
-        # Check if the current player is human
+    
         self.is_human_turn = not current_player.is_ai
         
         self.log(f"\n{current_player.name}'s turn")
         self.log(f"Current position: {current_player.position}")
         self.log(f"Tokens available: {current_player.tokens}")
-        
-        # Prediction phase - get prediction from player (human or AI)
+
         prediction = current_player.make_prediction(self)
         self.make_prediction(current_player.name, prediction)
         self.log(f"{current_player.name} predicts: {prediction}")
         
-        # Let opponents make predictions
+
         for player in self.players:
             if player != current_player:
                 opp_prediction = player.make_prediction(self)
                 self.make_prediction(player.name, opp_prediction)
                 self.log(f"{player.name} predicts: {opp_prediction}")
         
-        # Roll dice
+    
         dice_roll = self.roll_dice()
         self.log(f"Dice roll: {dice_roll}")
-        
-        # Check predictions
+      
         correct_predictions = self.check_predictions(dice_roll)
         
-        # Handle current player's correct prediction
         bonus_roll = False
         if correct_predictions[current_player.name]:
             choice = self.handle_correct_current_player_prediction(current_player, dice_roll)
             bonus_roll = (choice == 1)  # Choice 1 is bonus roll
         
-        # Handle opponents' correct predictions
         self.handle_correct_opponent_predictions(dice_roll, current_player)
         
         # Move player
         self.move_player(current_player, dice_roll)
-        
-        # Check for snake encounter
         self.check_snake_encounter(current_player)
-        
-        # Process bonus roll if earned
+      
         if bonus_roll:
             self.log(f"{current_player.name} gets a bonus roll!")
             bonus_dice_roll = self.roll_dice()
@@ -619,14 +529,11 @@ class SnakesAndLadders:
             self.move_player(current_player, bonus_dice_roll)
             self.check_snake_encounter(current_player)
         
-        # Check if player has won
         if self.check_win(current_player):
             self.log(f"\n🎉 {current_player.name} has reached position {self.board_size} and won the game! 🎉")
             self.winner = current_player
             self.game_state = "game_over"
             return True
-        
-        # Move to next player
         self.next_player()
         return False
 
