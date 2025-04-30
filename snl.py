@@ -235,7 +235,7 @@ class AIPlayer(Player):
         return snake_length > 15 and self.tokens >= tokens_required
 
 class SnakesAndLadders:
-    def __init__(self, board_size: int = 100, num_snakes: int = 10, num_ladders: int = 10):
+    def __init__(self, board_size: int = 100, num_snakes: int = 6, num_ladders: int = 6):
         """Initialize the game with the given board size and number of snakes and ladders."""
         self.board_size = board_size
         self.players: List[Union[Player, AIPlayer]] = []
@@ -250,40 +250,34 @@ class SnakesAndLadders:
         self.winner = None
         self.is_human_turn = False 
         
-
-        if num_snakes == 0 and num_ladders == 0:
-            self._setup_predefined_board()
-        else:
-            self._setup_board(num_snakes, num_ladders)
+        # Always use the predefined board that matches the reference image
+        self._setup_predefined_board()
     
     def _setup_predefined_board(self):
-        """Set up the board with a predefined layout of snakes and ladders."""
-        # Predefined snakes - keys are heads (where you land), values are tails (where you slide to)
-        self.snakes = {
-            16: 6,
-            46: 36,
-            49: 31,
-            62: 19,
-            64: 60,
-            79: 61,
-            93: 73,
-            95: 75,
-            99: 80
+        """Set up the board with a predefined layout matching the Shutterstock image."""
+        # Ladders (bottom to top) from the image
+        self.ladders = {
+            1: 38,    # Bottom left to middle
+            4: 14,    # Bottom left to lower right
+            9: 31,    # Bottom right to middle right
+            21: 42,   # Left to middle left
+            28: 84,   # Middle to upper middle
+            36: 44,   # Middle to middle
+            51: 67,   # Right middle to middle right
+            71: 91,   # Upper right to top right
         }
         
-        # Predefined ladders - keys are bottoms, values are tops
-        self.ladders = {
-            2: 38,
-            7: 14,
-            8: 31,
-            15: 26,
-            21: 42,
-            28: 84,
-            36: 44,
-            51: 67,
-            71: 91,
-            78: 98,
-            87: 94
+        # Snakes (head to tail) from the image
+        self.snakes = {
+            98: 79,   # Near top to middle
+            93: 73,   # Near top to middle
+            64: 60,   # Middle to middle left
+            54: 34,   # Middle to lower middle
+            62: 19,   # Middle left to bottom
+            87: 24,   # Upper middle to bottom
+            45: 15,   # Middle to bottom
+            11: 10,   # Middle to bottom (moved from 47->26)
+            49: 5     # Right middle to bottom
         }
         
         # Calculate snake sizes based on length
@@ -302,32 +296,127 @@ class SnakesAndLadders:
     
     def _setup_board(self, num_snakes: int, num_ladders: int):
         """Set up the board with randomized snakes and ladders."""
-        # Create ladders (bottom -> top)
-        potential_ladder_starts = list(range(1, self.board_size - 20))
-        random.shuffle(potential_ladder_starts)
         
-        for i in range(num_ladders):
-            if i < len(potential_ladder_starts):
-                bottom = potential_ladder_starts[i]
-                # Ladder should move upward by at least 10 squares
-                max_top = min(bottom + 30, self.board_size - 1)
-                min_top = min(bottom + 10, max_top)
-                top = random.randint(min_top, max_top)
-                self.ladders[bottom] = top
+        # Create ladders using a zone-based approach to prevent crossing
+        # Divide the board into zones for better ladder distribution
+        board_zones = 4  # Number of horizontal zones on the board
+        zone_size = self.board_size // board_zones
+        
+        ladder_destinations = set()  # Track where ladders end to prevent overlap
+        ladder_starts = set()  # Track where ladders start
+        ladder_bottoms = []  # Store all bottoms for snakes to avoid
+        
+        # Distribute ladders across zones to prevent crossing
+        ladders_per_zone = max(1, num_ladders // board_zones)
+        remaining_ladders = num_ladders
+        
+        # Create ladders zone by zone
+        for zone in range(board_zones):
+            zone_start = 1 + zone * zone_size
+            zone_end = min(self.board_size - 10, (zone + 1) * zone_size)
+            
+            # Skip last few squares to avoid placing ladders too close to finish
+            if zone == board_zones - 1:
+                zone_end = min(zone_end, self.board_size - 15)
+            
+            # Number of ladders to place in this zone
+            zone_ladders = min(ladders_per_zone, remaining_ladders)
+            
+            # Potential bottoms in this zone
+            potential_bottoms = list(range(zone_start, zone_end - 10))
+            random.shuffle(potential_bottoms)
+            
+            for _ in range(zone_ladders):
+                if not potential_bottoms or remaining_ladders <= 0:
+                    break
+                    
+                # Find a valid ladder bottom
+                bottom = None
+                while potential_bottoms and bottom is None:
+                    candidate = potential_bottoms.pop(0)
+                    # Ensure bottoms are spaced apart
+                    if all(abs(candidate - existing) >= 5 for existing in ladder_starts):
+                        bottom = candidate
+                
+                if bottom is None:
+                    continue
+                    
+                # Calculate potential tops (only in higher zones)
+                min_top_zone = min(board_zones - 1, zone + 1)  # At least one zone up
+                max_top = self.board_size - 1
+                min_top = bottom + 10  # Minimum climb of 10 spaces
+                
+                # Try to find a unique destination that's not too close to others
+                attempts = 0
+                found_top = False
+                
+                while attempts < 15 and not found_top:  # More attempts to find good spots
+                    # Prefer destinations in higher zones for longer ladders
+                    target_zone = random.randint(min_top_zone, board_zones - 1)
+                    zone_min = max(min_top, 1 + target_zone * zone_size)
+                    zone_max = min(max_top, (target_zone + 1) * zone_size)
+                    
+                    if zone_min >= zone_max:
+                        attempts += 1
+                        continue
+                        
+                    top = random.randint(zone_min, zone_max)
+                    
+                    # Check if this destination is unique and not too close to others
+                    if (top not in ladder_destinations and 
+                            all(abs(top - dest) >= 5 for dest in ladder_destinations)):
+                        self.ladders[bottom] = top
+                        ladder_destinations.add(top)
+                        ladder_starts.add(bottom)
+                        ladder_bottoms.append(bottom)
+                        found_top = True
+                        remaining_ladders -= 1
+                        break
+                        
+                    attempts += 1
         
         # Create snakes (head -> tail)
         potential_snake_heads = list(range(20, self.board_size))
+        # Don't place a snake where a ladder ends or within 3 squares of a ladder end
+        for ladder_top in ladder_destinations:
+            for offset in range(-3, 4):  # Avoid 3 squares before and after ladder top
+                if 0 < ladder_top + offset < self.board_size:
+                    if ladder_top + offset in potential_snake_heads:
+                        potential_snake_heads.remove(ladder_top + offset)
+        
         random.shuffle(potential_snake_heads)
         
+        # Track where snake tails end to avoid overcrowding
+        snake_tails = set()
+        
         for i in range(num_snakes):
-            if i < len(potential_snake_heads):
-                head = potential_snake_heads[i]
-                min_tail = max(1, head - 30)
-                max_tail = max(min_tail, head - 10)
+            if i >= len(potential_snake_heads):
+                break
+                
+            head = potential_snake_heads[i]
+            min_tail = max(1, head - 30)
+            max_tail = max(min_tail, head - 10)
+            
+            # Try to find a unique destination
+            attempts = 0
+            valid_tail = False
+            
+            while attempts < 10 and not valid_tail:  # Limit attempts
                 tail = random.randint(min_tail, max_tail)
-                self.snakes[head] = tail
-                snake_length = head - tail
-                self.calculate_snake_size(head, snake_length)
+                # Ensure this tail isn't at the bottom of a ladder or another snake tail
+                # Also ensure it's not close to another snake tail or ladder bottom
+                if (tail not in ladder_bottoms and 
+                    tail not in snake_tails and
+                    all(abs(tail - bottom) >= 3 for bottom in ladder_bottoms) and
+                    all(abs(tail - other_tail) >= 3 for other_tail in snake_tails)):
+                    
+                    self.snakes[head] = tail
+                    snake_tails.add(tail)
+                    snake_length = head - tail
+                    self.calculate_snake_size(head, snake_length)
+                    valid_tail = True
+                    
+                attempts += 1
     
     def add_player(self, player: Union[Player, AIPlayer]):
         """Add a player to the game."""

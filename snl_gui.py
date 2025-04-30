@@ -294,13 +294,16 @@ class SnakesAndLaddersGUI:
             dx = math.cos(perpendicular_angle) * width
             dy = math.sin(perpendicular_angle) * width
             
+            # Dark brown color for ladders instead of green
+            ladder_color = (120, 70, 20)  # Dark brown
+            
             # Draw ladder sides (two parallel lines)
-            pygame.draw.line(self.screen, LADDER_COLOR, (start_x - dx, start_y - dy), (end_x - dx, end_y - dy), 5)
-            pygame.draw.line(self.screen, LADDER_COLOR, (start_x + dx, start_y + dy), (end_x + dx, end_y + dy), 5)
+            pygame.draw.line(self.screen, ladder_color, (start_x - dx, start_y - dy), (end_x - dx, end_y - dy), 5)
+            pygame.draw.line(self.screen, ladder_color, (start_x + dx, start_y + dy), (end_x + dx, end_y + dy), 5)
             
             # Add gold color border for more visibility
-            pygame.draw.line(self.screen, (220, 220,20),(start_x - dx, start_y - dy), (end_x - dx, end_y - dy), 1)
-            pygame.draw.line(self.screen, (220, 220, 20),(start_x + dx, start_y + dy), (end_x + dx, end_y + dy), 1)
+            pygame.draw.line(self.screen, (220, 180, 0), (start_x - dx, start_y - dy), (end_x - dx, end_y - dy), 1)
+            pygame.draw.line(self.screen, (220, 180, 0), (start_x + dx, start_y + dy), (end_x + dx, end_y + dy), 1)
             
             steps = max(3, int(distance / 30))
             for i in range(1, steps + 1):
@@ -313,23 +316,53 @@ class SnakesAndLaddersGUI:
                 rung_x2 = rung_x + dx
                 rung_y2 = rung_y + dy
                 
-                pygame.draw.line(self.screen, LADDER_COLOR, (rung_x1, rung_y1), (rung_x2, rung_y2), 3)
-                pygame.draw.line(self.screen, (220, 180, 0),(rung_x1, rung_y1), (rung_x2, rung_y2), 1)
+                pygame.draw.line(self.screen, ladder_color, (rung_x1, rung_y1), (rung_x2, rung_y2), 3)
+                pygame.draw.line(self.screen, (220, 180, 0), (rung_x1, rung_y1), (rung_x2, rung_y2), 1)
         
-        SNAKE_COLORS = [
-            (255, 50, 50),    
-            (50, 150, 50),  
-            (70, 70, 200),    
-            (180, 50, 180),  
-            (200, 120, 0),   
-            (0, 150, 150),  
-            (130, 80, 0),     
-            (100, 100, 100)   
+        # Snake colors by zone
+        SNAKE_COLORS = {
+            # Top row snakes (red)
+            98: (255, 50, 50),   # Red snake
+            95: (255, 50, 50),   # Red snake
+            93: (255, 50, 50),   # Red snake
+            
+            # Middle snakes (purple)
+            64: (180, 50, 180),    # Purple snake
+            54: (180, 50, 180),    # Purple snake
+            
+            # Bottom-right snakes (red)
+            49: (255, 50, 50),   # Red snake
+            
+            # Middle-left snake (purple)
+            62: (180, 50, 180),    # Purple snake
+            
+            # Middle snake (red)
+            56: (255, 50, 50),    # Red snake
+            
+            # Upper-middle snake (purple)
+            87: (180, 50, 180)     # Purple snake
+        }
+        
+        # Default colors for any additional snakes
+        DEFAULT_SNAKE_COLORS = [
+            (255, 50, 50),    # Red
+            (180, 50, 180),   # Purple
+            (255, 50, 50),    # Red
+            (180, 50, 180),   # Purple
+            (255, 50, 50),    # Red
+            (180, 50, 180),   # Purple
+            (255, 50, 50),    # Red
+            (180, 50, 180)    # Purple
         ]
         
         snake_items = list(self.game.snakes.items())
         for i, (head, tail) in enumerate(snake_items):
-            snake_color = SNAKE_COLORS[i % len(SNAKE_COLORS)]
+            # Use the predefined color if available, otherwise use default colors
+            if head in SNAKE_COLORS:
+                snake_color = SNAKE_COLORS[head]
+            else:
+                snake_color = DEFAULT_SNAKE_COLORS[i % len(DEFAULT_SNAKE_COLORS)]
+            
             snake_id = head 
             
             start_x, start_y = self.get_cell_center(head)
@@ -340,37 +373,24 @@ class SnakesAndLaddersGUI:
             distance = math.sqrt(dx*dx + dy*dy)
             angle = math.atan2(dy, dx)
             
-            pattern_index = (i % 4)
-            
-            # Create pattern variation:
-            # 0: gentle S-curve
-            # 1: more pronounced S-curve
-            # 2: C-curve to the right
-            # 3: C-curve to the left
-            
-            if pattern_index == 0 or pattern_index == 1:
-                # S-curve pattern
-                curve_factor = 0.2 if pattern_index == 0 else 0.35  # Adjust curve intensity
-                curve_direction = 1 if i % 2 == 0 else -1
-                
-                # First control point - perpendicular to the line
-                ctrl_x1 = start_x + dx * 0.25 - math.sin(angle) * distance * curve_factor * curve_direction
-                ctrl_y1 = start_y + dy * 0.25 + math.cos(angle) * distance * curve_factor * curve_direction
-                
-                # Second control point - perpendicular in the opposite direction
-                ctrl_x2 = start_x + dx * 0.75 + math.sin(angle) * distance * curve_factor * curve_direction
-                ctrl_y2 = start_y + dy * 0.75 - math.cos(angle) * distance * curve_factor * curve_direction
+            # Create pattern variation based on the snake's color
+            if snake_color == (255, 50, 50):  # Red snakes
+                pattern_index = 0  # Simple S-curve
             else:
-                # C-curve pattern
-                curve_factor = 0.4  # Stronger curve
-                curve_direction = 1 if pattern_index == 2 else -1
-                
-                # Both control points on the same side for C-curve
-                ctrl_x1 = start_x + dx * 0.25 + math.sin(angle) * distance * curve_factor * curve_direction
-                ctrl_y1 = start_y + dy * 0.25 - math.cos(angle) * distance * curve_factor * curve_direction
-                
-                ctrl_x2 = start_x + dx * 0.75 + math.sin(angle) * distance * curve_factor * curve_direction
-                ctrl_y2 = start_y + dy * 0.75 - math.cos(angle) * distance * curve_factor * curve_direction
+                pattern_index = 1  # Pronounced S-curve (for other colors)
+            
+            # All snakes will use S-curves now, no C-curves
+            # S-curve pattern with varying intensity
+            curve_factor = 0.2 if pattern_index == 0 else 0.35  # Adjust curve intensity
+            curve_direction = 1 if i % 2 == 0 else -1
+            
+            # First control point - perpendicular to the line
+            ctrl_x1 = start_x + dx * 0.25 - math.sin(angle) * distance * curve_factor * curve_direction
+            ctrl_y1 = start_y + dy * 0.25 + math.cos(angle) * distance * curve_factor * curve_direction
+            
+            # Second control point - perpendicular in the opposite direction
+            ctrl_x2 = start_x + dx * 0.75 + math.sin(angle) * distance * curve_factor * curve_direction
+            ctrl_y2 = start_y + dy * 0.75 - math.cos(angle) * distance * curve_factor * curve_direction
             
             points = []
             steps = 30
