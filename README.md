@@ -16,7 +16,7 @@ A modern, interactive implementation of the classic Snakes and Ladders board gam
 - Interactive UI with real-time game log
 - Play again functionality
 
-# Demo
+# Demo (Access using NU ID only)
 Video Link: https://drive.google.com/file/d/1c1w5oDrXCS0bv1RUOUNnzP6QntwHze0q/view?usp=sharing
 
 ## Requirements
