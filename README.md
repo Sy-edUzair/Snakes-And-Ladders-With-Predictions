@@ -5,7 +5,7 @@ A modern, interactive implementation of the classic Snakes and Ladders board gam
 ## Features
 
 - Traditional 100-tile Snakes and Ladders gameplay with a vibrant custom board
-- Multiplayer support for 2-4 players (1 human + AI opponents)
+- Multiplayer support for 2 players (1 human + 1 AI opponents)
 - Prediction-based mechanics:
   - Players predict dice rolls before each turn
   - Correct predictions by the current player grant bonus actions
